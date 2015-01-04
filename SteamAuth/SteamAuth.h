@@ -9,8 +9,8 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-@interface SteamAuth : NSObject
+@interface SteamAuth : NSObject <UIWebViewDelegate>
 
-+ (NSString *)promptLoginRetrieveSteamID;
+- (NSString *)promptLoginRetrieveSteamID64;
 
 @end

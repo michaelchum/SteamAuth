@@ -10,12 +10,15 @@
 
 @interface ViewController ()
 
+@property (nonatomic, strong) SteamAuth *steamAuth;
+
 @end
 
 @implementation ViewController
 
 - (IBAction)loginWithSteam:(id)sender {
-    [SteamAuth promptLoginRetrieveSteamID];
+    self.steamAuth = [[SteamAuth alloc] init];
+    [self.steamAuth promptLoginRetrieveSteamID64];
 }
 
 - (void)viewDidLoad {
