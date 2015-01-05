@@ -10,25 +10,32 @@
 
 @interface SteamAuth ()
 
-@property (nonatomic, strong) NSString *steamID; // e.g.
-@property (nonatomic, strong) NSString *steamID64; // e.g. 76561198091532227
-@property (nonatomic, strong) NSString *vanityID; // e.g.
 @property (nonatomic, strong) UIWebView *steamMobileLoginView;
+@property (nonatomic, strong) NSString *apiKey; // e.g. Monk3y
 
 @end
 
 @implementation SteamAuth
 
 static NSString * const STEAM_MOBILE_LOGIN_URL = @"https://steamcommunity.com/mobilelogin";
+static NSInteger const STEAMID64_IDENTIFIER = 76561197960265728;
+static NSString * const VANITY_URL_XML_PREFIX = @"https://steamcommunity.com/id/";
+static NSString * const VANITY_URL_XML_SUFFIX = @"/?xml=1";
 
-- (instancetype)init
-{
+- (instancetype)initWithKey:(NSString *)key {
     if (self = [super init]) {
         self.steamID64 = nil;
         self.steamID = nil;
         self.vanityID = nil;
+        self.apiKey = key;
     }
     return self;
+}
+
++ (instancetype)sessionWithKey:(NSString *)key {
+    SteamAuth *steamAuth = [[self alloc] initWithKey:key];
+    
+    return steamAuth;
 }
 
 - (void)promptLoginWebView {
@@ -42,7 +49,7 @@ static NSString * const STEAM_MOBILE_LOGIN_URL = @"https://steamcommunity.com/mo
     
 }
 
-- (NSString *)promptLoginRetrieveSteamID64 {
+- (NSString *)promptLoginRetrieveSteamID {
     
     [self promptLoginWebView];
     
@@ -84,24 +91,71 @@ static NSString * const STEAM_MOBILE_LOGIN_URL = @"https://steamcommunity.com/mo
         self.steamMobileLoginView = nil;
         
         return NO;
-        
+
     }
 
     return YES;
 }
 
-+ (NSString *)convertTextTo64:(NSString *)steamID {
+// SteamID conversion using the official formula
+// https://developer.valvesoftware.com/wiki/SteamID
+// Steam Community ID = SteamID64 = W = Z*2+V+Y
+// Steam ID = SteamID = STEAM_X:Y:Z
+
+// Steam ID => Steam Community ID
+// STEAM_0:1:65633249 => 76561198091532227
++ (NSString *)convertSteamIDToSteamID64:(NSString *)steamID {
+    
     NSString *steamID64 = nil;
+    
+    NSArray *components = [steamID componentsSeparatedByString:@":"];
+    NSInteger z = [components[2] intValue];
+    NSInteger y = [components[1] intValue];
+    NSInteger v = STEAMID64_IDENTIFIER;
+    
+    steamID64 = [NSString stringWithFormat:@"%ld", z * 2 + v + y];
+    
     return steamID64;
 }
 
-+ (NSString *)convert64ToText:(NSString *)steamID64  {
-    NSString *steamID = nil;
+// Steam Community ID => Steam ID
+// 76561198091532227 => STEAM_0:1:65633249
++ (NSString *)convertSteamID64ToSteamID:(NSString *)steamID64  {
+    
+    NSMutableString *steamID = [@"STEAM_0" mutableCopy];
+    
+    NSInteger w = [steamID64 longLongValue];
+    NSInteger v = STEAMID64_IDENTIFIER;
+    NSInteger y = w % (long)2;
+    
+    NSInteger sid = w - y - v;
+    sid = sid / 2;
+    
+    [steamID appendString:@":"];
+    [steamID appendString:[NSString stringWithFormat:@"%ld", y]];
+    [steamID appendString:@":"];
+    [steamID appendString:[NSString stringWithFormat:@"%ld", sid]];
+    
     return steamID;
 }
 
-+ (NSString *)convertVanityTo64 {
-    NSString *steamID64;
++ (NSString *)convertVanityIDToSteamID64:(NSString *)vanityID {
+    
+    NSString *steamID64 = nil;
+    
+    // Gather vanity url
+    NSMutableString *vanityAddress = [VANITY_URL_XML_PREFIX mutableCopy];
+    [vanityAddress appendString:vanityID];
+    [vanityAddress appendString:VANITY_URL_XML_SUFFIX];
+    NSURL *vanityURL = [NSURL URLWithString:vanityAddress];
+    NSURLRequest *vanityRequest = [NSURLRequest requestWithURL:vanityURL];
+    
+    // Initialize URL session
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration  defaultSessionConfiguration]
+                                                          delegate:self
+                                                     delegateQueue:nil];
+    
+    
     return steamID64;
 }
 
